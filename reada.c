@@ -24,9 +24,13 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
     }
 
     while (size) {
+	size_t endpos = (fda->fpos + size + NREADA) / 4096 * 4096;
+	size_t asize = endpos - (fda->fpos + size);
+	assert(asize > NREADA - 4096);
+	assert(asize <= NREADA);
 	struct iovec iov[2] = {
 	    { .iov_base = buf, .iov_len = size },
-	    { .iov_base = fda->buf, .iov_len = NREADA },
+	    { .iov_base = fda->buf, .iov_len = asize },
 	};
 	ssize_t n;
 	do
@@ -36,6 +40,7 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
 	    return n;
 	if (n == 0)
 	    break;
+	fda->fpos += n;
 	if ((size_t) n > size) {
 	    fda->fill = n - size;
 	    n = size;

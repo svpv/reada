@@ -16,6 +16,14 @@ $ time ./a.out fread $@
  * stdio can still be faster - even despite double copying.  However, both
  * read and fread miss the feature which I need most: peeking a few bytes
  * ahead.
+ *
+ * Update: early implementations used a very small (16-byte) lookahead buffer.
+ * The implementation since has been changed to use a big 8K buffer and to
+ * extend reads to a 4K page boundary.  It now outperforms stdio.
+
+$ time ./a.out reada $@
+0.11s user 0.37s system 99% cpu 0.482 total
+
  */
 #include <stdio.h>
 #include <assert.h>
@@ -63,7 +71,8 @@ int main(int argc, char **argv)
     for (int i = 2; i < argc; i++) {
 	int fd = open(argv[i], O_RDONLY);
 	assert(fd >= 0);
-	struct fda fda = { fd };
+	char buf[NREADA];
+	struct fda fda = { fd, buf };
 	FILE *fp = fdopen(fd, "r");
 	assert(fp);
 	union fdu u;
