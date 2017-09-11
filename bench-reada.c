@@ -97,6 +97,11 @@ int main(int argc, char **argv)
 	    char a[dataSize];
 	    n = xread(u, a, dataSize);
 	    assert(n == dataSize);
+#ifdef TEST_PEEKA
+	    n = peeka(&fda, w + 1, 4);
+	    assert((n == 0 && w[1] == 0) ||
+		   (n == 4 && w[1] == be32toh(0x8eade801)));
+#endif
 	    nhdr++;
 	}
 	fclose(fp);

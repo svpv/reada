@@ -1,5 +1,6 @@
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 #include <errno.h>
 #include <sys/uio.h>
 #include "reada.h"
@@ -50,4 +51,39 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
     }
 
     return total;
+}
+
+ssize_t peeka(struct fda *fda, void *buf, size_t size)
+{
+    assert(size > 0);
+    assert(size <= NREADA);
+
+    size_t left = fda->fill - fda->off;
+    if (left < size) {
+	if (fda->off) {
+	    memmove(fda->buf, fda->buf + fda->off, left);
+	    fda->off = 0, fda->fill = left;
+	}
+	do {
+	    size_t endpos = (fda->fpos + NREADA - fda->fill) / 4096 * 4096;
+	    size_t asize = endpos - fda->fpos;
+	    assert(asize > 0);
+	    assert(fda->fill + asize <= NREADA);
+	    ssize_t n;
+	    do
+		n = read(fda->fd, fda->buf + fda->fill, asize);
+	    while (n < 0 && errno == EINTR);
+	    if (n < 0)
+		return n;
+	    if (n == 0)
+		break;
+	    fda->fpos += n;
+	    fda->fill += n, left += n;
+	} while (left < size);
+    }
+
+    if (left < size)
+	size = left;
+    memcpy(buf, fda->buf + fda->off, size);
+    return size;
 }

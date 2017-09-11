@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 ssize_t reada(struct fda *fda, void *buf, size_t size);
+ssize_t peeka(struct fda *fda, void *buf, size_t size);
 
 #ifdef __cplusplus
 }
