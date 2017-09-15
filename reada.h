@@ -12,8 +12,8 @@
 struct fda {
     int fd;
     char *buf; // NREADA
-    size_t fill; // how many bytes were read into the buffer
-    size_t off; // current offset into the buffer (some bytes consumed)
+    char *cur; // current offset into the buffer
+    char *end; // how many bytes were read into the buffer
     size_t fpos; // file offset as seen by the OS (for page boundary)
 };
 
@@ -29,13 +29,15 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
 {
     assert(size > 0);
 
-    size_t left = fda->fill - fda->off;
+    // Hands up all those who believe that subtracting
+    // two null pointers results in undefined behaviour.
+    size_t left = fda->end - fda->cur;
     if (left >= size) {
-	memcpy(buf, fda->buf + fda->off, size);
+	memcpy(buf, fda->cur, size);
 	if (left == size)
-	    fda->off = fda->fill = 0;
+	    fda->cur = fda->end = NULL;
 	else
-	    fda->off += size;
+	    fda->cur += size;
 	return size;
     }
 
@@ -47,9 +49,9 @@ ssize_t peeka(struct fda *fda, void *buf, size_t size)
 {
     assert(size > 0);
 
-    size_t left = fda->fill - fda->off;
+    size_t left = fda->end - fda->cur;
     if (left >= size) {
-	memcpy(buf, fda->buf + fda->off, size);
+	memcpy(buf, fda->cur, size);
 	return size;
     }
 
