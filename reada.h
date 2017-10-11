@@ -14,7 +14,7 @@ struct fda {
     char *buf; // NREADA
     char *cur; // current offset into the buffer
     char *end; // how many bytes were read into the buffer
-    size_t fpos; // file offset as seen by the OS (for page boundary)
+    off_t fpos; // file offset as seen by the OS
 };
 
 #ifdef __cplusplus
@@ -56,6 +56,12 @@ ssize_t peeka(struct fda *fda, void *buf, size_t size)
     }
 
     return peeka_(fda, buf, size, left);
+}
+
+static inline
+off_t tella(struct fda *fda)
+{
+    return fda->fpos - (fda->end - fda->cur);
 }
 
 #ifdef __cplusplus
