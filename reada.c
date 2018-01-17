@@ -17,8 +17,11 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
     }
 
     do {
-	size_t endpos = (fda->fpos + size + NREADA) / 4096 * 4096;
-	size_t asize = endpos - (fda->fpos + size);
+	// File position after reading size bytes into the caller's buffer.
+	size_t endpos1 = (size_t) fda->fpos + size;
+	// And then up to NREADA bytes into fda->buf, to a page boundary.
+	size_t endpos2 = (endpos1 + NREADA) & ~(size_t) 0xfff;
+	size_t asize = endpos2 - endpos1;
 	assert(asize > NREADA - 4096);
 	assert(asize <= NREADA);
 	struct iovec iov[2] = {
@@ -57,8 +60,11 @@ ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
     }
 
     do {
-	size_t endpos = (fda->fpos + NREADA - left) / 4096 * 4096;
-	size_t asize = endpos - fda->fpos;
+	// Can advance file position up to NREADA bytes.
+	size_t endpos = (size_t) fda->fpos + NREADA - left;
+	// Will read to a page boundary.
+	endpos &= ~(size_t) 0xfff;
+	size_t asize = endpos - (size_t) fda->fpos;
 	assert(asize > 0);
 	assert(left + asize <= NREADA);
 	ssize_t n;
