@@ -1,5 +1,4 @@
-#ifndef READA_H
-#define READA_H
+#pragma once
 
 #include <assert.h>
 #include <sys/types.h> // ssize_t
@@ -66,6 +65,4 @@ off_t tella(struct fda *fda)
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
