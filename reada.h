@@ -5,7 +5,11 @@
 #include <string.h>
 
 // Raw buffer to be declared separately, no need to initialize.
+#ifndef NREADA
 #define NREADA 8192
+#elif NREADA < 4096 || NREADA % 4096
+#error "bad NREADA value"
+#endif
 
 // File descriptor with readahead, initialize with { fd, buf }.
 struct fda {
