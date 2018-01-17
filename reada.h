@@ -37,10 +37,7 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
     size_t left = fda->end - fda->cur;
     if (left >= size) {
 	memcpy(buf, fda->cur, size);
-	if (left == size)
-	    fda->cur = fda->end = NULL;
-	else
-	    fda->cur += size;
+	fda->cur += size;
 	return size;
     }
 

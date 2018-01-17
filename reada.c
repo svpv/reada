@@ -12,7 +12,7 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
     if (left) {
 	memcpy(buf, fda->cur, left);
 	size -= left, buf = (char *) buf + left;
-	fda->cur = fda->end = NULL;
+	fda->cur = fda->end = NULL; // in case read fails
 	total += left;
     }
 
