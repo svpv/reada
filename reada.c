@@ -16,7 +16,7 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 	total += left;
     }
 
-    do {
+    while (1) {
 	// File position after reading size bytes into the caller's buffer.
 	size_t endpos1 = (size_t) fda->fpos + size;
 	// And then up to NREADA bytes into fda->buf, to a page boundary.
@@ -35,18 +35,16 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 	if (n < 0)
 	    return n;
 	if (n == 0)
-	    break;
+	    return total;
 	fda->fpos += n;
-	if ((size_t) n > size) {
+	if ((size_t) n >= size) {
 	    fda->cur = fda->buf;
 	    fda->end = fda->buf + (n - size);
-	    n = size;
+	    return total + size;
 	}
 	size -= n, buf = (char *) buf + n;
 	total += n;
-    } while (size);
-
-    return total;
+    }
 }
 
 ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
