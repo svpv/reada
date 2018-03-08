@@ -84,3 +84,40 @@ ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
     memcpy(buf, fda->buf, size);
     return size;
 }
+
+ssize_t skipa_(struct fda *fda, size_t size, size_t left)
+{
+    size_t total = 0;
+
+    if (left) {
+	size -= left;
+	fda->cur = fda->end = NULL;
+	total += left;
+    }
+
+    while (1) {
+	// Can advance file position up to NREADA bytes.
+	size_t endpos = (size_t) fda->fpos + NREADA;
+	// Will read to a page boundary.
+	endpos &= ~(size_t) 0xfff;
+	size_t asize = endpos - (size_t) fda->fpos;
+	assert(asize > 0);
+	assert(asize <= NREADA);
+	ssize_t n;
+	do
+	    n = read(fda->fd, fda->buf, asize);
+	while (n < 0 && errno == EINTR);
+	if (n < 0)
+	    return n;
+	if (n == 0)
+	    return total;
+	fda->fpos += n;
+	if ((size_t) n >= size) {
+	    fda->cur = fda->buf + size;
+	    fda->end = fda->buf + n;
+	    return total + size;
+	}
+	size -= n;
+	total += n;
+    }
+}
