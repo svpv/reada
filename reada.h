@@ -27,7 +27,7 @@ extern "C" {
 ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
 ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left);
 
-static inline
+static inline __attribute__((always_inline))
 ssize_t reada(struct fda *fda, void *buf, size_t size)
 {
     assert(size > 0);
@@ -44,7 +44,7 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
     return reada_(fda, buf, size, left);
 }
 
-static inline
+static inline __attribute__((always_inline))
 ssize_t peeka(struct fda *fda, void *buf, size_t size)
 {
     assert(size > 0);
@@ -58,7 +58,7 @@ ssize_t peeka(struct fda *fda, void *buf, size_t size)
     return peeka_(fda, buf, size, left);
 }
 
-static inline
+static inline __attribute__((always_inline))
 off_t tella(struct fda *fda)
 {
     return fda->fpos - (fda->end - fda->cur);
