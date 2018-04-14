@@ -82,6 +82,8 @@ off_t tella(struct fda *fda)
     return fda->fpos - (fda->end - fda->cur);
 }
 
+off_t setposa(struct fda *fda, off_t off);
+
 #pragma GCC visibility pop
 
 #ifdef __cplusplus

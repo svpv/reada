@@ -128,3 +128,30 @@ ssize_t skipa_(struct fda *fda, size_t size, size_t left)
 	total += n;
     }
 }
+
+off_t setposa(struct fda *fda, off_t off)
+{
+    // The real offset, as seen by the OS, is fda->fpos.
+    // But we also have a buffer which may take us a few bytes back.
+    // So within this range, the position can be changed by simply
+    // adjusting fda->cur, without actually calling lseek(2).
+    off_t hi = fda->fpos;
+    if (off <= hi) {
+	// How many bytes can we go back?
+	off_t back = fda->end ? fda->end - fda->buf : 0;
+	off_t lo = hi - back;
+	if (off >= lo) {
+	    // How many bytes do we need to go back?
+	    back = hi - off;
+	    fda->cur = fda->end - back;
+	    return fda->fpos - back;
+	}
+    }
+
+    off_t ret = lseek(fda->fd, off, SEEK_SET);
+    if (ret >= 0) {
+	fda->fpos = ret;
+	fda->cur = fda->end = NULL;
+    }
+    return ret;
+}
