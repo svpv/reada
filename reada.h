@@ -24,6 +24,9 @@ struct fda {
 extern "C" {
 #endif
 
+// Not to be re-exported on behalf of a shared library.
+#pragma GCC visibility push(hidden)
+
 ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
 ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left);
 ssize_t skipa_(struct fda *fda, size_t size, size_t left);
@@ -78,6 +81,8 @@ off_t tella(struct fda *fda)
 {
     return fda->fpos - (fda->end - fda->cur);
 }
+
+#pragma GCC visibility pop
 
 #ifdef __cplusplus
 }
