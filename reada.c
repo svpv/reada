@@ -1,5 +1,6 @@
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/uio.h>
@@ -7,6 +8,10 @@
 
 ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 {
+    // Inline functions check that the size is greater than 0.
+    // Each "tail fuction" checks that the size is not too big.
+    assert(size <= SSIZE_MAX);
+
     size_t total = 0;
 
     if (left) {
@@ -87,6 +92,8 @@ ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
 
 ssize_t skipa_(struct fda *fda, size_t size, size_t left)
 {
+    assert(size <= SSIZE_MAX);
+
     size_t total = 0;
 
     if (left) {
