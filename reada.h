@@ -28,7 +28,7 @@ extern "C" {
 #pragma GCC visibility push(hidden)
 
 ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
-ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left);
+ssize_t filla_(struct fda *fda, size_t size, size_t left);
 ssize_t skipa_(struct fda *fda, size_t size, size_t left);
 
 static inline __attribute__((always_inline))
@@ -48,6 +48,24 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
     return reada_(fda, buf, size, left);
 }
 
+// How many bytes can the buffer currently harbor?  This may be
+// less than NREADA, because we only read to the page boundary,
+// so one must not assume that the whole buffer can be filled.
+size_t maxfilla(struct fda *fda);
+
+// Try to fill the buffer with (at least) size bytes, returns <= size.
+static inline __attribute__((always_inline))
+ssize_t filla(struct fda *fda, size_t size)
+{
+    assert(size > 0);
+
+    size_t left = fda->end - fda->cur;
+    if (left >= size)
+	return size;
+
+    return filla_(fda, size, left);
+}
+
 static inline __attribute__((always_inline))
 ssize_t peeka(struct fda *fda, void *buf, size_t size)
 {
@@ -59,7 +77,10 @@ ssize_t peeka(struct fda *fda, void *buf, size_t size)
 	return size;
     }
 
-    return peeka_(fda, buf, size, left);
+    ssize_t fill = filla_(fda, size, left);
+    if (fill > 0)
+	memcpy(buf, fda->cur, fill);
+    return fill;
 }
 
 static inline __attribute__((always_inline))

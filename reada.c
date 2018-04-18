@@ -52,7 +52,28 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
     }
 }
 
-ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
+// How many bytes can we read ahead?  (Unsigned mod size_t
+// arithmetic should work just fine with large offsets.)
+static inline size_t rasize(size_t left, size_t fpos)
+{
+    // Can advance file position up to NREADA bytes,
+    // but also need to keep the bytes that are left.
+    size_t endpos = fpos + NREADA - left;
+    // Will read to a page boundary.
+    endpos &= ~(size_t) 0xfff;
+
+    size_t asize = endpos - fpos;
+    assert(left + asize <= NREADA);
+    return asize;
+}
+
+size_t maxfilla(struct fda *fda)
+{
+    size_t left = fda->end - fda->cur;
+    return left + rasize(left, fda->fpos);
+}
+
+ssize_t filla_(struct fda *fda, size_t size, size_t left)
 {
     assert(size <= NREADA);
 
@@ -63,13 +84,8 @@ ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
     }
 
     do {
-	// Can advance file position up to NREADA bytes.
-	size_t endpos = (size_t) fda->fpos + NREADA - left;
-	// Will read to a page boundary.
-	endpos &= ~(size_t) 0xfff;
-	size_t asize = endpos - (size_t) fda->fpos;
+	size_t asize = rasize(left, fda->fpos);
 	assert(asize > 0);
-	assert(left + asize <= NREADA);
 	ssize_t n;
 	do
 	    n = read(fda->fd, fda->buf + left, asize);
@@ -86,7 +102,6 @@ ssize_t peeka_(struct fda *fda, void *buf, size_t size, size_t left)
 
     if (left < size)
 	size = left;
-    memcpy(buf, fda->buf, size);
     return size;
 }
 
