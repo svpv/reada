@@ -20,9 +20,21 @@
 
 #pragma once
 
-#include <assert.h>
 #include <sys/types.h> // ssize_t
 #include <string.h>
+
+#ifdef READA_DEBUG
+#include <assert.h>
+#define RA_ASSERT(cond) assert(cond)
+#else
+#define RA_ASSERT(cond) ((void)0)
+#endif
+
+#ifdef __GNUC__
+#define RA_INLINE static inline __attribute__((always_inline))
+#else
+#define RA_INLINE static inline
+#endif
 
 // Raw buffer to be declared separately, no need to initialize.
 #define BUFSIZA 8192
@@ -47,10 +59,9 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
 ssize_t filla_(struct fda *fda, size_t size, size_t left);
 ssize_t skipa_(struct fda *fda, size_t size, size_t left);
 
-static inline __attribute__((always_inline))
-ssize_t reada(struct fda *fda, void *buf, size_t size)
+RA_INLINE ssize_t reada(struct fda *fda, void *buf, size_t size)
 {
-    assert(size > 0);
+    RA_ASSERT(size > 0);
 
     // Hands up all those who believe that subtracting
     // two null pointers results in undefined behaviour.
@@ -70,10 +81,9 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
 size_t maxfilla(struct fda *fda);
 
 // Try to fill the buffer with (at least) size bytes, returns <= size.
-static inline __attribute__((always_inline))
-ssize_t filla(struct fda *fda, size_t size)
+RA_INLINE ssize_t filla(struct fda *fda, size_t size)
 {
-    assert(size > 0);
+    RA_ASSERT(size > 0);
 
     size_t left = fda->end - fda->cur;
     if (left >= size)
@@ -82,10 +92,9 @@ ssize_t filla(struct fda *fda, size_t size)
     return filla_(fda, size, left);
 }
 
-static inline __attribute__((always_inline))
-ssize_t peeka(struct fda *fda, void *buf, size_t size)
+RA_INLINE ssize_t peeka(struct fda *fda, void *buf, size_t size)
 {
-    assert(size > 0);
+    RA_ASSERT(size > 0);
 
     size_t left = fda->end - fda->cur;
     if (left >= size) {
@@ -99,10 +108,9 @@ ssize_t peeka(struct fda *fda, void *buf, size_t size)
     return fill;
 }
 
-static inline __attribute__((always_inline))
-ssize_t skipa(struct fda *fda, size_t size)
+RA_INLINE ssize_t skipa(struct fda *fda, size_t size)
 {
-    assert(size > 0);
+    RA_ASSERT(size > 0);
 
     size_t left = fda->end - fda->cur;
     if (left >= size) {
@@ -113,8 +121,7 @@ ssize_t skipa(struct fda *fda, size_t size)
     return skipa_(fda, size, left);
 }
 
-static inline __attribute__((always_inline))
-off_t tella(struct fda *fda)
+RA_INLINE off_t tella(struct fda *fda)
 {
     return fda->fpos - (fda->end - fda->cur);
 }

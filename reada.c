@@ -19,7 +19,6 @@
 // SOFTWARE.
 
 #include <string.h>
-#include <assert.h>
 #include <limits.h>
 #include <unistd.h>
 #include <errno.h>
@@ -30,7 +29,7 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 {
     // Inline functions check that the size is greater than 0.
     // Each "tail fuction" checks that the size is not too big.
-    assert(size <= SSIZE_MAX);
+    RA_ASSERT(size <= SSIZE_MAX);
 
     size_t total = 0;
 
@@ -47,8 +46,8 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 	// And then up to BUFSIZA bytes into fda->buf, to a page boundary.
 	size_t endpos2 = (endpos1 + BUFSIZA) & ~(size_t) 0xfff;
 	size_t asize = endpos2 - endpos1;
-	assert(asize > BUFSIZA - 4096);
-	assert(asize <= BUFSIZA);
+	RA_ASSERT(asize > BUFSIZA - 4096);
+	RA_ASSERT(asize <= BUFSIZA);
 	struct iovec iov[2] = {
 	    { .iov_base = buf, .iov_len = size },
 	    { .iov_base = fda->buf, .iov_len = asize },
@@ -83,7 +82,7 @@ static inline size_t rasize(size_t left, size_t fpos)
     endpos &= ~(size_t) 0xfff;
 
     size_t asize = endpos - fpos;
-    assert(left + asize <= BUFSIZA);
+    RA_ASSERT(left + asize <= BUFSIZA);
     return asize;
 }
 
@@ -95,7 +94,7 @@ size_t maxfilla(struct fda *fda)
 
 ssize_t filla_(struct fda *fda, size_t size, size_t left)
 {
-    assert(size <= BUFSIZA);
+    RA_ASSERT(size <= BUFSIZA);
 
     if (left && fda->cur > fda->buf) {
 	memmove(fda->buf, fda->cur, left);
@@ -105,7 +104,7 @@ ssize_t filla_(struct fda *fda, size_t size, size_t left)
 
     do {
 	size_t asize = rasize(left, fda->fpos);
-	assert(asize > 0);
+	RA_ASSERT(asize > 0);
 	ssize_t n;
 	do
 	    n = read(fda->fd, fda->buf + left, asize);
@@ -127,7 +126,7 @@ ssize_t filla_(struct fda *fda, size_t size, size_t left)
 
 ssize_t skipa_(struct fda *fda, size_t size, size_t left)
 {
-    assert(size <= SSIZE_MAX);
+    RA_ASSERT(size <= SSIZE_MAX);
 
     size_t total = 0;
 
@@ -143,8 +142,8 @@ ssize_t skipa_(struct fda *fda, size_t size, size_t left)
 	// Will read to a page boundary.
 	endpos &= ~(size_t) 0xfff;
 	size_t asize = endpos - (size_t) fda->fpos;
-	assert(asize > 0);
-	assert(asize <= BUFSIZA);
+	RA_ASSERT(asize > 0);
+	RA_ASSERT(asize <= BUFSIZA);
 	ssize_t n;
 	do
 	    n = read(fda->fd, fda->buf, asize);
