@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     for (int i = 2; i < argc; i++) {
 	int fd = open(argv[i], O_RDONLY);
 	assert(fd >= 0);
-	char buf[NREADA];
+	char buf[BUFSIZA];
 	struct fda fda = { fd, buf };
 	FILE *fp = fdopen(fd, "r");
 	assert(fp);

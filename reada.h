@@ -25,16 +25,12 @@
 #include <string.h>
 
 // Raw buffer to be declared separately, no need to initialize.
-#ifndef NREADA
-#define NREADA 8192
-#elif NREADA < 4096 || NREADA % 4096
-#error "bad NREADA value"
-#endif
+#define BUFSIZA 8192
 
 // File descriptor with readahead, initialize with { fd, buf }.
 struct fda {
     int fd;
-    char *buf; // NREADA
+    char *buf; // BUFSIZA
     char *cur; // current offset into the buffer
     char *end; // how many bytes were read into the buffer
     off_t fpos; // file offset as seen by the OS
@@ -69,7 +65,7 @@ ssize_t reada(struct fda *fda, void *buf, size_t size)
 }
 
 // How many bytes can the buffer currently harbor?  This may be
-// less than NREADA, because we only read to the page boundary,
+// less than BUFSIZA, because we only read to the page boundary,
 // so one must not assume that the whole buffer can be filled.
 size_t maxfilla(struct fda *fda);
 
