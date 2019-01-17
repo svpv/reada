@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <sys/types.h> // ssize_t
 #include <string.h>
 
 #ifdef READA_DEBUG
@@ -55,11 +54,11 @@ extern "C" {
 // Not to be re-exported on behalf of a shared library.
 #pragma GCC visibility push(hidden)
 
-ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
-ssize_t filla_(struct fda *fda, size_t size, size_t left);
-ssize_t skipa_(struct fda *fda, size_t size, size_t left);
+size_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
+size_t filla_(struct fda *fda, size_t size, size_t left);
+size_t skipa_(struct fda *fda, size_t size, size_t left);
 
-RA_INLINE ssize_t reada(struct fda *fda, void *buf, size_t size)
+RA_INLINE size_t reada(struct fda *fda, void *buf, size_t size)
 {
     RA_ASSERT(size > 0);
 
@@ -81,7 +80,7 @@ RA_INLINE ssize_t reada(struct fda *fda, void *buf, size_t size)
 size_t maxfilla(struct fda *fda);
 
 // Try to fill the buffer with (at least) size bytes, returns <= size.
-RA_INLINE ssize_t filla(struct fda *fda, size_t size)
+RA_INLINE size_t filla(struct fda *fda, size_t size)
 {
     RA_ASSERT(size > 0);
 
@@ -92,7 +91,7 @@ RA_INLINE ssize_t filla(struct fda *fda, size_t size)
     return filla_(fda, size, left);
 }
 
-RA_INLINE ssize_t peeka(struct fda *fda, void *buf, size_t size)
+RA_INLINE size_t peeka(struct fda *fda, void *buf, size_t size)
 {
     RA_ASSERT(size > 0);
 
@@ -102,13 +101,13 @@ RA_INLINE ssize_t peeka(struct fda *fda, void *buf, size_t size)
 	return size;
     }
 
-    ssize_t fill = filla_(fda, size, left);
-    if (fill > 0)
+    size_t fill = filla_(fda, size, left);
+    if (fill > 0 && fill != (size_t) -1)
 	memcpy(buf, fda->cur, fill);
     return fill;
 }
 
-RA_INLINE ssize_t skipa(struct fda *fda, size_t size)
+RA_INLINE size_t skipa(struct fda *fda, size_t size)
 {
     RA_ASSERT(size > 0);
 

@@ -25,11 +25,11 @@
 #include <sys/uio.h>
 #include "reada.h"
 
-ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
+size_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 {
     // Inline functions check that the size is greater than 0.
     // Each "tail fuction" checks that the size is not too big.
-    RA_ASSERT(size <= SSIZE_MAX);
+    RA_ASSERT(size != (size_t) -1);
 
     size_t total = 0;
 
@@ -57,7 +57,7 @@ ssize_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 	    n = readv(fda->fd, iov, 2);
 	while (n < 0 && errno == EINTR);
 	if (n < 0)
-	    return n;
+	    return (size_t) -1;
 	if (n == 0)
 	    return total;
 	fda->fpos += n;
@@ -92,7 +92,7 @@ size_t maxfilla(struct fda *fda)
     return left + rasize(left, fda->fpos);
 }
 
-ssize_t filla_(struct fda *fda, size_t size, size_t left)
+size_t filla_(struct fda *fda, size_t size, size_t left)
 {
     RA_ASSERT(size <= BUFSIZA);
 
@@ -110,7 +110,7 @@ ssize_t filla_(struct fda *fda, size_t size, size_t left)
 	    n = read(fda->fd, fda->buf + left, asize);
 	while (n < 0 && errno == EINTR);
 	if (n < 0)
-	    return n;
+	    return (size_t) -1;
 	if (n == 0)
 	    break;
 	left += n;
@@ -124,9 +124,9 @@ ssize_t filla_(struct fda *fda, size_t size, size_t left)
     return size;
 }
 
-ssize_t skipa_(struct fda *fda, size_t size, size_t left)
+size_t skipa_(struct fda *fda, size_t size, size_t left)
 {
-    RA_ASSERT(size <= SSIZE_MAX);
+    RA_ASSERT(size != (size_t) -1);
 
     size_t total = 0;
 
@@ -149,7 +149,7 @@ ssize_t skipa_(struct fda *fda, size_t size, size_t left)
 	    n = read(fda->fd, fda->buf, asize);
 	while (n < 0 && errno == EINTR);
 	if (n < 0)
-	    return n;
+	    return (size_t) -1;
 	if (n == 0)
 	    return total;
 	fda->fpos += n;
