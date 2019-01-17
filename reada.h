@@ -40,11 +40,16 @@
 
 // File descriptor with readahead, initialize with { fd, buf }.
 struct fda {
+    // The underlying file descriptor.
     int fd;
-    char *buf; // BUFSIZA
-    char *cur; // current offset into the buffer
-    char *end; // how many bytes were read into the buffer
-    off_t fpos; // file offset as seen by the OS
+    // The underlying buffer, BUFSIZA bytes.
+    char *buf;
+    // Current position / offset into the buffer.
+    char *cur;
+    // How many bytes are left in the buffer, starting with cur.
+    size_t fill;
+    // File offset as seen by the OS.
+    off_t fpos;
 };
 
 #ifdef __cplusplus
@@ -54,24 +59,21 @@ extern "C" {
 // Not to be re-exported on behalf of a shared library.
 #pragma GCC visibility push(hidden)
 
-size_t reada_(struct fda *fda, void *buf, size_t size, size_t left);
-size_t filla_(struct fda *fda, size_t size, size_t left);
-size_t skipa_(struct fda *fda, size_t size, size_t left);
+size_t reada_(struct fda *fda, void *buf, size_t size);
+size_t filla_(struct fda *fda, size_t size);
+size_t skipa_(struct fda *fda, size_t size);
 
 RA_INLINE size_t reada(struct fda *fda, void *buf, size_t size)
 {
     RA_ASSERT(size > 0);
 
-    // Hands up all those who believe that subtracting
-    // two null pointers results in undefined behaviour.
-    size_t left = fda->end - fda->cur;
-    if (left >= size) {
+    if (fda->fill >= size) {
 	memcpy(buf, fda->cur, size);
-	fda->cur += size;
+	fda->cur += size, fda->fill -= size;
 	return size;
     }
 
-    return reada_(fda, buf, size, left);
+    return reada_(fda, buf, size);
 }
 
 // How many bytes can the buffer currently harbor?  This may be
@@ -84,24 +86,22 @@ RA_INLINE size_t filla(struct fda *fda, size_t size)
 {
     RA_ASSERT(size > 0);
 
-    size_t left = fda->end - fda->cur;
-    if (left >= size)
+    if (fda->fill >= size)
 	return size;
 
-    return filla_(fda, size, left);
+    return filla_(fda, size);
 }
 
 RA_INLINE size_t peeka(struct fda *fda, void *buf, size_t size)
 {
     RA_ASSERT(size > 0);
 
-    size_t left = fda->end - fda->cur;
-    if (left >= size) {
+    if (fda->fill >= size) {
 	memcpy(buf, fda->cur, size);
 	return size;
     }
 
-    size_t fill = filla_(fda, size, left);
+    size_t fill = filla_(fda, size);
     if (fill > 0 && fill != (size_t) -1)
 	memcpy(buf, fda->cur, fill);
     return fill;
@@ -111,18 +111,17 @@ RA_INLINE size_t skipa(struct fda *fda, size_t size)
 {
     RA_ASSERT(size > 0);
 
-    size_t left = fda->end - fda->cur;
-    if (left >= size) {
-	fda->cur += size;
+    if (fda->fill >= size) {
+	fda->cur += size, fda->fill -= size;
 	return size;
     }
 
-    return skipa_(fda, size, left);
+    return skipa_(fda, size);
 }
 
 RA_INLINE off_t tella(struct fda *fda)
 {
-    return fda->fpos - (fda->end - fda->cur);
+    return fda->fpos - fda->fill;
 }
 
 off_t setposa(struct fda *fda, off_t off);

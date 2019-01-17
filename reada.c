@@ -25,19 +25,19 @@
 #include <sys/uio.h>
 #include "reada.h"
 
-size_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
+size_t reada_(struct fda *fda, void *buf, size_t size)
 {
     // Inline functions check that the size is greater than 0.
     // Each "tail fuction" checks that the size is not too big.
     RA_ASSERT(size != (size_t) -1);
 
-    size_t total = 0;
-
-    if (left) {
-	memcpy(buf, fda->cur, left);
-	size -= left, buf = (char *) buf + left;
-	fda->cur = fda->end = NULL; // in case read fails
-	total += left;
+    // We are only called if the buffer is not full enough to satisfy
+    // the request, so taking it all.
+    size_t total = fda->fill;
+    if (fda->fill) {
+	memcpy(buf, fda->cur, fda->fill);
+	size -= fda->fill, buf = (char *) buf + fda->fill;
+	fda->cur = NULL, fda->fill = 0; // in case read fails
     }
 
     while (1) {
@@ -63,7 +63,7 @@ size_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 	fda->fpos += n;
 	if ((size_t) n >= size) {
 	    fda->cur = fda->buf;
-	    fda->end = fda->buf + (n - size);
+	    fda->fill = n - size;
 	    return total + size;
 	}
 	size -= n, buf = (char *) buf + n;
@@ -73,67 +73,60 @@ size_t reada_(struct fda *fda, void *buf, size_t size, size_t left)
 
 // How many bytes can we read ahead?  (Unsigned mod size_t
 // arithmetic should work just fine with large offsets.)
-static inline size_t rasize(size_t left, size_t fpos)
+static inline size_t rasize(size_t fill, size_t fpos)
 {
     // Can advance file position up to BUFSIZA bytes,
     // but also need to keep the bytes that are left.
-    size_t endpos = fpos + BUFSIZA - left;
+    size_t endpos = fpos + BUFSIZA - fill;
     // Will read to a page boundary.
     endpos &= ~(size_t) 0xfff;
 
     size_t asize = endpos - fpos;
-    RA_ASSERT(left + asize <= BUFSIZA);
+    RA_ASSERT(fill + asize <= BUFSIZA);
     return asize;
 }
 
 size_t maxfilla(struct fda *fda)
 {
-    size_t left = fda->end - fda->cur;
-    return left + rasize(left, fda->fpos);
+    return fda->fill + rasize(fda->fill, fda->fpos);
 }
 
-size_t filla_(struct fda *fda, size_t size, size_t left)
+size_t filla_(struct fda *fda, size_t size)
 {
     RA_ASSERT(size <= BUFSIZA);
 
-    if (left && fda->cur > fda->buf) {
-	memmove(fda->buf, fda->cur, left);
-	fda->cur = fda->buf;
-	fda->end = fda->buf + left;
-    }
+    if (fda->fill && fda->cur > fda->buf)
+	memmove(fda->buf, fda->cur, fda->fill);
+    fda->cur = fda->buf;
 
     do {
-	size_t asize = rasize(left, fda->fpos);
+	size_t asize = rasize(fda->fill, fda->fpos);
 	RA_ASSERT(asize > 0);
 	ssize_t n;
 	do
-	    n = read(fda->fd, fda->buf + left, asize);
+	    n = read(fda->fd, fda->buf + fda->fill, asize);
 	while (n < 0 && errno == EINTR);
 	if (n < 0)
 	    return (size_t) -1;
 	if (n == 0)
 	    break;
-	left += n;
+	fda->fill += n;
 	fda->fpos += n;
-	fda->cur = fda->buf;
-	fda->end = fda->buf + left;
-    } while (left < size);
+    } while (fda->fill < size);
 
-    if (left < size)
-	size = left;
+    if (size > fda->fill)
+	size = fda->fill;
     return size;
 }
 
-size_t skipa_(struct fda *fda, size_t size, size_t left)
+size_t skipa_(struct fda *fda, size_t size)
 {
     RA_ASSERT(size != (size_t) -1);
 
-    size_t total = 0;
-
-    if (left) {
-	size -= left;
-	fda->cur = fda->end = NULL;
-	total += left;
+    size_t total = fda->fill;
+    if (fda->fill) {
+	size -= fda->fill;
+	fda->fill = 0;
     }
 
     while (1) {
@@ -155,7 +148,7 @@ size_t skipa_(struct fda *fda, size_t size, size_t left)
 	fda->fpos += n;
 	if ((size_t) n >= size) {
 	    fda->cur = fda->buf + size;
-	    fda->end = fda->buf + n;
+	    fda->fill = n - size;
 	    return total + size;
 	}
 	size -= n;
@@ -171,21 +164,22 @@ off_t setposa(struct fda *fda, off_t off)
     // adjusting fda->cur, without actually calling lseek(2).
     off_t hi = fda->fpos;
     if (off <= hi) {
-	// How many bytes can we go back?
-	off_t back = fda->end ? fda->end - fda->buf : 0;
+	// How many bytes can we go back?  This assumes that the data
+	// in the buf..cur area is still valid.
+	off_t back = fda->cur ? fda->cur - fda->buf + fda->fill : 0;
 	off_t lo = hi - back;
 	if (off >= lo) {
-	    // How many bytes do we need to go back?
-	    back = hi - off;
-	    fda->cur = fda->end - back;
-	    return fda->fpos - back;
+	    off_t curoff = hi - fda->fill;
+	    ssize_t delta = off - curoff;
+	    fda->cur += delta, fda->fill -= delta;
+	    return off;
 	}
     }
 
     off_t ret = lseek(fda->fd, off, SEEK_SET);
     if (ret >= 0) {
 	fda->fpos = ret;
-	fda->cur = fda->end = NULL;
+	fda->cur = NULL, fda->fill = 0;
     }
     return ret;
 }
