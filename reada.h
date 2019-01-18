@@ -20,10 +20,21 @@
 
 #pragma once
 
+#ifndef __cplusplus
+#include <stdbool.h>
 #include <string.h>
-
 #ifdef READA_DEBUG
 #include <assert.h>
+#endif
+#else
+#include <cstring>
+#ifdef READA_DEBUG
+#include <cassert>
+#endif
+extern "C" {
+#endif
+
+#ifdef READA_DEBUG
 #define RA_ASSERT(cond) assert(cond)
 #else
 #define RA_ASSERT(cond) ((void)0)
@@ -48,21 +59,30 @@ struct fda {
     char *cur;
     // How many bytes are left in the buffer, starting with cur.
     size_t fill;
-    // File offset as seen by the OS.
+    // File offset as seen by the OS, i.e. at (cur + fill).
     off_t fpos;
+    // Sticky errno.
+    int errnum;
+    // Sticky eof, reset with setposa.
+    bool eof;
+    // Not a regular file, disables reading to a page boundary.
+    bool ispipe;
+    // Unused for now, better initialized with zero.
+    bool flag1, flag2;
 };
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // Not to be re-exported on behalf of a shared library.
 #pragma GCC visibility push(hidden)
 
+// Tail functions, called when there are not enough bytes to serve from fda->buf.
 size_t reada_(struct fda *fda, void *buf, size_t size);
 size_t filla_(struct fda *fda, size_t size);
 size_t skipa_(struct fda *fda, size_t size);
 
+// Read file data into the caller's buffer.  Resumes short reads and on EINTR,
+// hence normally returning the requested size.  When bytes read are fewer than
+// requested, or when 0 is returned, either fda->eof or fda->errnum is set, and
+// the next call to reada() will return 0.
 RA_INLINE size_t reada(struct fda *fda, void *buf, size_t size)
 {
     RA_ASSERT(size > 0);

@@ -27,42 +27,49 @@
 
 size_t reada_(struct fda *fda, void *buf, size_t size)
 {
-    // Inline functions check that the size is greater than 0.
-    // Each "tail fuction" checks that the size is not too big.
-    RA_ASSERT(size != (size_t) -1);
-
     // We are only called if the buffer is not full enough to satisfy
     // the request, so taking it all.
     size_t total = fda->fill;
     if (fda->fill) {
 	memcpy(buf, fda->cur, fda->fill);
 	size -= fda->fill, buf = (char *) buf + fda->fill;
-	fda->cur = NULL, fda->fill = 0; // in case read fails
+	fda->cur += fda->fill, fda->fill = 0;
     }
 
+    if (fda->eof || fda->errnum)
+	return total;
+
     while (1) {
-	// File position after reading size bytes into the caller's buffer.
-	size_t endpos1 = (size_t) fda->fpos + size;
-	// And then up to BUFSIZA bytes into fda->buf, to a page boundary.
-	size_t endpos2 = (endpos1 + BUFSIZA) & ~(size_t) 0xfff;
-	size_t asize = endpos2 - endpos1;
-	RA_ASSERT(asize > BUFSIZA - 4096);
-	RA_ASSERT(asize <= BUFSIZA);
+	size_t asize;
+	if (fda->ispipe)
+	    asize = BUFSIZA;
+	else {
+	    // File position after reading size bytes into the caller's buffer.
+	    size_t endpos1 = (size_t) fda->fpos + size;
+	    // And then up to BUFSIZA bytes into fda->buf, to a page boundary.
+	    size_t endpos2 = (endpos1 + BUFSIZA) & ~(size_t) 0xfff;
+	    asize = endpos2 - endpos1;
+	    RA_ASSERT(asize > BUFSIZA - 4096);
+	    RA_ASSERT(asize <= BUFSIZA);
+	}
 	struct iovec iov[2] = {
-	    { .iov_base = buf, .iov_len = size },
-	    { .iov_base = fda->buf, .iov_len = asize },
+	    { buf, size },
+	    { fda->buf, asize },
 	};
 	ssize_t n;
 	do
 	    n = readv(fda->fd, iov, 2);
 	while (n < 0 && errno == EINTR);
-	if (n < 0)
-	    return (size_t) -1;
-	if (n == 0)
+	if (n <= 0) {
+	    if (n == 0)
+		fda->eof = true;
+	    else
+		fda->errnum = errno;
 	    return total;
+	}
 	fda->fpos += n;
+	fda->cur = fda->buf; // no going back in setposa
 	if ((size_t) n >= size) {
-	    fda->cur = fda->buf;
 	    fda->fill = n - size;
 	    return total + size;
 	}
