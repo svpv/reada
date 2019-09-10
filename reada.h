@@ -77,7 +77,7 @@ struct fda {
 #pragma GCC visibility push(hidden)
 
 // Tail functions, called when there are not enough bytes to serve from fda->buf.
-size_t reada_(struct fda *fda, void *buf, size_t size);
+size_t reada_(struct fda *fda, char *buf, size_t size);
 size_t filla_(struct fda *fda, size_t size);
 size_t skipa_(struct fda *fda, size_t size);
 

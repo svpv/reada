@@ -25,14 +25,14 @@
 #include <sys/uio.h>
 #include "reada.h"
 
-size_t reada_(struct fda *fda, void *buf, size_t size)
+size_t reada_(struct fda *fda, char *buf, size_t size)
 {
     // We are only called if the buffer is not full enough to satisfy
     // the request, so taking it all.
     size_t total = fda->fill;
     if (fda->fill) {
 	memcpy(buf, fda->cur, fda->fill);
-	size -= fda->fill, buf = (char *) buf + fda->fill;
+	buf += fda->fill, size -= fda->fill,
 	fda->cur += fda->fill, fda->fill = 0;
     }
 
@@ -73,7 +73,7 @@ size_t reada_(struct fda *fda, void *buf, size_t size)
 	    fda->fill = n - size;
 	    return total + size;
 	}
-	size -= n, buf = (char *) buf + n;
+	buf += n, size -= n,
 	total += n;
     }
 }
