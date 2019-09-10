@@ -21,12 +21,14 @@
 #pragma once
 
 #ifndef __cplusplus
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #ifdef READA_DEBUG
 #include <assert.h>
 #endif
 #else
+#include <cstdint>
 #include <cstring>
 #ifdef READA_DEBUG
 #include <cassert>
@@ -60,7 +62,7 @@ struct fda {
     // How many bytes are left in the buffer, starting with cur.
     size_t fill;
     // File offset as seen by the OS, i.e. at (cur + fill).
-    off_t fpos;
+    uint64_t fpos;
     // Sticky errno.
     int err;
     // Sticky eof, reset with setposa.
@@ -139,12 +141,14 @@ RA_INLINE size_t skipa(struct fda *fda, size_t size)
     return skipa_(fda, size);
 }
 
-RA_INLINE off_t tella(struct fda *fda)
+RA_INLINE uint64_t tella(struct fda *fda)
 {
+    RA_ASSERT(fda->fpos >= fda->fill);
+
     return fda->fpos - fda->fill;
 }
 
-off_t setposa(struct fda *fda, off_t off);
+bool setposa(struct fda *fda, uint64_t off);
 
 #pragma GCC visibility pop
 

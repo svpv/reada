@@ -163,30 +163,32 @@ size_t skipa_(struct fda *fda, size_t size)
     }
 }
 
-off_t setposa(struct fda *fda, off_t off)
+bool setposa(struct fda *fda, uint64_t off)
 {
     // The real offset, as seen by the OS, is fda->fpos.
     // But we also have a buffer which may take us a few bytes back.
     // So within this range, the position can be changed by simply
     // adjusting fda->cur, without actually calling lseek(2).
-    off_t hi = fda->fpos;
+    uint64_t hi = fda->fpos;
     if (off <= hi) {
 	// How many bytes can we go back?  This assumes that the data
 	// in the buf..cur area is still valid.
-	off_t back = fda->cur ? fda->cur - fda->buf + fda->fill : 0;
-	off_t lo = hi - back;
+	uint64_t back = fda->cur ? fda->cur - fda->buf + fda->fill : 0;
+	uint64_t lo = hi - back;
 	if (off >= lo) {
 	    off_t curoff = hi - fda->fill;
 	    ssize_t delta = off - curoff;
 	    fda->cur += delta, fda->fill -= delta;
-	    return off;
+	    return true;
 	}
     }
-
-    off_t ret = lseek(fda->fd, off, SEEK_SET);
-    if (ret >= 0) {
-	fda->fpos = ret;
-	fda->cur = NULL, fda->fill = 0;
-    }
-    return ret;
+    int64_t ret = lseek(fda->fd, off, SEEK_SET);
+    // No sticky fda->err, because fda->state is still valid, and the internal
+    // state is consistent.  This is unlike read(2) which leaves unspecified
+    // whether the file position changes.
+    if (ret < 0)
+	return false;
+    fda->fpos = ret;
+    fda->cur = NULL, fda->fill = 0;
+    return fda->fpos == off;
 }
