@@ -36,7 +36,7 @@ size_t reada_(struct fda *fda, void *buf, size_t size)
 	fda->cur += fda->fill, fda->fill = 0;
     }
 
-    if (fda->eof || fda->errnum)
+    if (fda->eof || fda->err)
 	return total;
 
     while (1) {
@@ -64,7 +64,7 @@ size_t reada_(struct fda *fda, void *buf, size_t size)
 	    if (n == 0)
 		fda->eof = true;
 	    else
-		fda->errnum = errno;
+		fda->err = errno;
 	    return total;
 	}
 	fda->fpos += n;

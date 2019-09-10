@@ -62,7 +62,7 @@ struct fda {
     // File offset as seen by the OS, i.e. at (cur + fill).
     off_t fpos;
     // Sticky errno.
-    int errnum;
+    int err;
     // Sticky eof, reset with setposa.
     bool eof;
     // Not a regular file, disables reading to a page boundary.
@@ -81,7 +81,7 @@ size_t skipa_(struct fda *fda, size_t size);
 
 // Read file data into the caller's buffer.  Resumes short reads and on EINTR,
 // hence normally returning the requested size.  When bytes read are fewer than
-// requested, or when 0 is returned, either fda->eof or fda->errnum is set, and
+// requested, or when 0 is returned, either fda->eof or fda->err is set, and
 // the next call to reada() will return 0.
 RA_INLINE size_t reada(struct fda *fda, void *buf, size_t size)
 {
