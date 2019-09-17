@@ -39,19 +39,20 @@ size_t reada_(struct fda *fda, char *buf, size_t size)
     if (fda->eof || fda->err)
 	return total;
 
+    size_t asize;
+    if (fda->ispipe)
+	asize = BUFSIZA;
+    else {
+	// File position after reading size bytes into the caller's buffer.
+	size_t endpos1 = (size_t) fda->fpos + size;
+	// And then up to BUFSIZA bytes into fda->buf, to a page boundary.
+	size_t endpos2 = (endpos1 + BUFSIZA) & ~(size_t) 0xfff;
+	asize = endpos2 - endpos1;
+	RA_ASSERT(asize > BUFSIZA - 4096);
+	RA_ASSERT(asize <= BUFSIZA);
+    }
+
     while (1) {
-	size_t asize;
-	if (fda->ispipe)
-	    asize = BUFSIZA;
-	else {
-	    // File position after reading size bytes into the caller's buffer.
-	    size_t endpos1 = (size_t) fda->fpos + size;
-	    // And then up to BUFSIZA bytes into fda->buf, to a page boundary.
-	    size_t endpos2 = (endpos1 + BUFSIZA) & ~(size_t) 0xfff;
-	    asize = endpos2 - endpos1;
-	    RA_ASSERT(asize > BUFSIZA - 4096);
-	    RA_ASSERT(asize <= BUFSIZA);
-	}
 	struct iovec iov[2] = {
 	    { buf, size },
 	    { fda->buf, asize },
@@ -73,7 +74,7 @@ size_t reada_(struct fda *fda, char *buf, size_t size)
 	    fda->fill = n - size;
 	    return total + size;
 	}
-	buf += n, size -= n,
+	buf += n, size -= n;
 	total += n;
     }
 }
