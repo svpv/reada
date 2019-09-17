@@ -93,8 +93,10 @@ static inline size_t rasize(size_t fill, size_t fpos)
     return asize;
 }
 
-size_t maxfilla(struct fda *fda)
+size_t maxfilla(const struct fda *fda)
 {
+    if (fda->ispipe)
+	return BUFSIZA;
     return fda->fill + rasize(fda->fill, fda->fpos);
 }
 

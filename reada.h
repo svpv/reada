@@ -98,10 +98,12 @@ RA_INLINE size_t reada(struct fda *fda, void *buf, size_t size)
     return reada_(fda, buf, size);
 }
 
-// How many bytes can the buffer currently harbor?  This may be
-// less than BUFSIZA, because we only read to the page boundary,
-// so one must not assume that the whole buffer can be filled.
-size_t maxfilla(struct fda *fda);
+// How many bytes can fda->buf currently harbor?  This may be less than
+// BUFSIZA, because we only read to a page boundary, so one must not assume
+// that the whole buffer can be filled.  The caller may safely assume though
+// that at least one page (4096 bytes) fits into the buffer (that's why
+// BUFSIZA is set to 8192).
+size_t maxfilla(const struct fda *fda);
 
 // Try to fill the buffer with (at least) size bytes, returns <= size.
 RA_INLINE size_t filla(struct fda *fda, size_t size)
