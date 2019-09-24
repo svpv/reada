@@ -25,6 +25,18 @@
 #include <sys/uio.h>
 #include "reada.h"
 
+// How many more eytes can we read into fda->buf, to a page boundary?
+// (Unsigned mod size_t arithmetic should work just fine with large offsets.)
+static inline size_t rasize(size_t fill, size_t fpos)
+{
+    // Can advance file position up to BUFSIZA bytes,
+    // but also need to keep the bytes that are left.
+    size_t endpos = fpos + BUFSIZA - fill;
+    // Will read to a page boundary.
+    endpos &= ~(size_t) 0xfff;
+    return endpos - fpos;
+}
+
 size_t reada_(struct fda *fda, char *buf, size_t size)
 {
     // We are only called if the buffer is not full enough to satisfy
@@ -42,15 +54,9 @@ size_t reada_(struct fda *fda, char *buf, size_t size)
     size_t asize;
     if (fda->ispipe)
 	asize = BUFSIZA;
-    else {
-	// File position after reading size bytes into the caller's buffer.
-	size_t endpos1 = (size_t) fda->fpos + size;
-	// And then up to BUFSIZA bytes into fda->buf, to a page boundary.
-	size_t endpos2 = (endpos1 + BUFSIZA) & ~(size_t) 0xfff;
-	asize = endpos2 - endpos1;
-	RA_ASSERT(asize > BUFSIZA - 4096);
-	RA_ASSERT(asize <= BUFSIZA);
-    }
+    else
+	// fill and fpos after reading into the caller's buffer
+	asize = rasize(0, fda->fpos + size);
 
     while (1) {
 	struct iovec iov[2] = {
@@ -79,21 +85,6 @@ size_t reada_(struct fda *fda, char *buf, size_t size)
     }
 }
 
-// How many bytes can we read ahead?  (Unsigned mod size_t
-// arithmetic should work just fine with large offsets.)
-static inline size_t rasize(size_t fill, size_t fpos)
-{
-    // Can advance file position up to BUFSIZA bytes,
-    // but also need to keep the bytes that are left.
-    size_t endpos = fpos + BUFSIZA - fill;
-    // Will read to a page boundary.
-    endpos &= ~(size_t) 0xfff;
-
-    size_t asize = endpos - fpos;
-    RA_ASSERT(fill + asize <= BUFSIZA);
-    return asize;
-}
-
 size_t maxfilla(const struct fda *fda)
 {
     if (fda->ispipe)
@@ -103,30 +94,39 @@ size_t maxfilla(const struct fda *fda)
 
 size_t filla_(struct fda *fda, size_t size)
 {
-    RA_ASSERT(size <= BUFSIZA);
+    if (fda->eof || fda->err)
+	return fda->fill;
 
     if (fda->fill && fda->cur > fda->buf)
 	memmove(fda->buf, fda->cur, fda->fill);
     fda->cur = fda->buf;
 
-    do {
-	size_t asize = rasize(fda->fill, fda->fpos);
-	RA_ASSERT(asize > 0);
+    size_t asize;
+    if (fda->ispipe)
+	asize = BUFSIZA - fda->fill;
+    else
+	asize = rasize(fda->fill, fda->fpos);
+
+    while (asize) {
 	ssize_t n;
 	do
 	    n = read(fda->fd, fda->buf + fda->fill, asize);
 	while (n < 0 && errno == EINTR);
-	if (n < 0)
-	    return (size_t) -1;
-	if (n == 0)
-	    break;
+	if (n <= 0) {
+	    if (n == 0)
+		fda->eof = true;
+	    else
+		fda->err = errno;
+	    return fda->fill;
+	}
 	fda->fill += n;
 	fda->fpos += n;
-    } while (fda->fill < size);
+	if (fda->fill >= size)
+	    return size;
+	asize -= n;
+    }
 
-    if (size > fda->fill)
-	size = fda->fill;
-    return size;
+    return fda->fill;
 }
 
 size_t skipa_(struct fda *fda, size_t size)

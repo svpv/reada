@@ -105,7 +105,9 @@ RA_INLINE size_t reada(struct fda *fda, void *buf, size_t size)
 // BUFSIZA is set to 8192).
 size_t maxfilla(const struct fda *fda);
 
-// Try to fill the buffer with (at least) size bytes, returns <= size.
+// Fill the buffer with (at least) size bytes (but not more than maxfilla).
+// Returns <= size, similarly to reada.  If bytes read are fewer than
+// requested, this may also indicate that (size > maxfilla).
 RA_INLINE size_t filla(struct fda *fda, size_t size)
 {
     RA_ASSERT(size > 0);
