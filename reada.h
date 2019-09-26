@@ -118,6 +118,8 @@ RA_INLINE size_t filla(struct fda *fda, size_t size)
     return filla_(fda, size);
 }
 
+// Read data without discarding it from the buffer / advancing file pointer.
+// Returns similar to reada, restrictions on size similar to filla.
 RA_INLINE size_t peeka(struct fda *fda, void *buf, size_t size)
 {
     RA_ASSERT(size > 0);
@@ -128,15 +130,15 @@ RA_INLINE size_t peeka(struct fda *fda, void *buf, size_t size)
     }
 
     size_t fill = filla_(fda, size);
-    if (fill > 0 && fill != (size_t) -1)
+    if (fill > 0)
 	memcpy(buf, fda->cur, fill);
     return fill;
 }
 
+// Discard size bytes from the buffer / advance file pointer.
+// Unlike reada, permits zero size.
 RA_INLINE size_t skipa(struct fda *fda, size_t size)
 {
-    RA_ASSERT(size > 0);
-
     if (fda->fill >= size) {
 	fda->cur += size, fda->fill -= size;
 	return size;
